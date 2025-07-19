@@ -26,25 +26,75 @@ const LoginForm = ({ onToggleForm }) => {
     setError('');
   };
 
+  const verificarCredenciales = async (email, contraseña) => {
+    try {
+      // Primero obtenemos todos los usuarios
+      const response = await fetch('http://localhost:3000/api/usuarios');
+      
+      if (!response.ok) {
+        throw new Error('Error al verificar las credenciales');
+      }
+      
+      const usuarios = await response.json();
+      
+      // Buscamos un usuario que coincida con el email
+      const usuario = usuarios.find(u => u.email === email);
+      
+      if (!usuario) {
+        return { valido: false, mensaje: 'Usuario no encontrado' };
+      }
+      
+      // Verificamos la contraseña
+      // NOTA: En una aplicación real, esto debería hacerse del lado del servidor
+      // con un sistema de hash como bcrypt
+      if (usuario.contraseña !== contraseña) {
+        return { valido: false, mensaje: 'Contraseña incorrecta' };
+      }
+      
+      return { 
+        valido: true, 
+        usuario: {
+          documento: usuario.documento,
+          email: usuario.email,
+          // Agrega aquí otros campos del usuario que necesites
+        }
+      };
+      
+    } catch (error) {
+      console.error('Error en verificación de credenciales:', error);
+      return { 
+        valido: false, 
+        mensaje: 'Error al verificar las credenciales. Inténtalo de nuevo.' 
+      };
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      // Simulación de login - aquí irá la llamada al backend
-      if (formData.email && formData.contraseña) {
-        // Simulamos un usuario de prueba
-        const userData = {
-          documento: '12345678',
-          email: formData.email
-        };
-        login(userData);
-      } else {
+      // Validar que los campos no estén vacíos
+      if (!formData.email || !formData.contraseña) {
         setError('Por favor, completa todos los campos');
+        return;
       }
+
+      // Verificar credenciales con el backend
+      const resultado = await verificarCredenciales(formData.email, formData.contraseña);
+      
+      if (!resultado.valido) {
+        setError(resultado.mensaje || 'Credenciales inválidas');
+        return;
+      }
+      
+      // Si llegamos aquí, las credenciales son válidas
+      login(resultado.usuario);
+      
     } catch (err) {
-      setError('Error al iniciar sesión. Verifica tus credenciales.');
+      console.error('Error en el inicio de sesión:', err);
+      setError(err.message || 'Error al iniciar sesión. Inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
     }

@@ -22,29 +22,33 @@ const ProveedoresView = () => {
   const [editingProveedor, setEditingProveedor] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, proveedor: null });
 
-  // Simulamos datos iniciales
+  // Cargar proveedores desde la API
   useEffect(() => {
-    if (proveedores.length === 0) {
-      const proveedoresSimulados = [
-        {
-          id_proveedor: 1,
-          nombre_proveedor: 'Finca Los Mangos S.A.S',
-          id_producto: 1 // Mango Tommy
-        },
-        {
-          id_proveedor: 2,
-          nombre_proveedor: 'Distribuidora Valle Verde',
-          id_producto: 2 // Mango Azúcar
-        },
-        {
-          id_proveedor: 3,
-          nombre_proveedor: 'Cooperativa Fruticultores',
-          id_producto: 3 // Mango Verde
+    const fetchProveedores = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:3000/api/proveedores');
+        
+        if (!response.ok) {
+          throw new Error('Error al cargar los proveedores');
         }
-      ];
-      setProveedores(proveedoresSimulados);
-    }
-  }, [proveedores.length, setProveedores]);
+        
+        const data = await response.json();
+        setProveedores(data);
+      } catch (error) {
+        console.error('Error al cargar proveedores:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los proveedores. Intente nuevamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProveedores();
+  }, [setProveedores, setLoading]);
 
   const handleEdit = (proveedor) => {
     setEditingProveedor(proveedor);
@@ -59,15 +63,27 @@ const ProveedoresView = () => {
     if (deleteDialog.proveedor) {
       try {
         setLoading(true);
+        const response = await fetch(`http://localhost:3000/api/proveedores/${deleteDialog.proveedor.id_proveedor}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.mensaje || 'Error al eliminar el proveedor');
+        }
+
+        // Actualizar el estado local después de eliminar
         deleteProveedor(deleteDialog.proveedor.id_proveedor);
+        
         toast({
           title: "Proveedor eliminado",
           description: `${deleteDialog.proveedor.nombre_proveedor} ha sido eliminado correctamente.`
         });
       } catch (error) {
+        console.error('Error al eliminar proveedor:', error);
         toast({
           title: "Error",
-          description: "No se pudo eliminar el proveedor.",
+          description: error.message || "No se pudo eliminar el proveedor.",
           variant: "destructive"
         });
       } finally {

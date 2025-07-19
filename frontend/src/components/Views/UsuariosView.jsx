@@ -21,24 +21,34 @@ const UsuariosView = () => {
   const [editingUsuario, setEditingUsuario] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, usuario: null });
 
-  // Simulamos datos iniciales
-  useEffect(() => {
-    if (usuarios.length === 0) {
-      const usuariosSimulados = [
-        {
-          documento: 12345678,
-          email: 'admin@elmango.com',
-          contraseña: '******'
-        },
-        {
-          documento: 87654321,
-          email: 'vendedor@elmango.com',
-          contraseña: '******'
-        }
-      ];
-      setUsuarios(usuariosSimulados);
+  // Cargar usuarios desde la API
+  const cargarUsuarios = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:3000/api/usuarios');
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar los usuarios');
+      }
+      
+      const data = await response.json();
+      setUsuarios(data);
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los usuarios. Inténtalo de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [usuarios.length, setUsuarios]);
+  };
+
+  // Cargar usuarios al montar el componente
+  useEffect(() => {
+    cargarUsuarios();
+  }, []);
 
   const handleEdit = (usuario) => {
     setEditingUsuario(usuario);
@@ -50,24 +60,39 @@ const UsuariosView = () => {
   };
 
   const confirmDelete = async () => {
-    if (deleteDialog.usuario) {
-      try {
-        setLoading(true);
-        deleteUsuario(deleteDialog.usuario.documento);
-        toast({
-          title: "Usuario eliminado",
-          description: `Usuario ${deleteDialog.usuario.email} ha sido eliminado correctamente.`
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "No se pudo eliminar el usuario.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-        setDeleteDialog({ open: false, usuario: null });
+    if (!deleteDialog.usuario) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `http://localhost:3000/api/usuarios/${deleteDialog.usuario.documento}`, 
+        {
+          method: 'DELETE'
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al eliminar el usuario');
       }
+      
+      // Actualizar el estado local
+      deleteUsuario(deleteDialog.usuario.documento);
+      
+      toast({
+        title: "Usuario eliminado",
+        description: `Usuario ${deleteDialog.usuario.email} ha sido eliminado correctamente.`
+      });
+    } catch (error) {
+      console.error('Error al eliminar usuario:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el usuario.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+      setDeleteDialog({ open: false, usuario: null });
     }
   };
 

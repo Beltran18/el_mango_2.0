@@ -11,41 +11,44 @@ const VentasView = () => {
   const [selectedVenta, setSelectedVenta] = useState(null);
   const [detalleModalOpen, setDetalleModalOpen] = useState(false);
 
-  // Simulamos datos iniciales
+  // Obtener ventas desde la API
   useEffect(() => {
-    if (ventas.length === 0) {
-      const ventasSimuladas = [
-        {
-          id_venta: 1,
-          total: 7500,
-          fecha: new Date('2024-01-15').toISOString(),
-          productos: [
-            { id_producto: 1, nombre: 'Mango Tommy', cantidad: 2, precio_unitario: 2500, subtotal: 5000 },
-            { id_producto: 2, nombre: 'Mango Azúcar', cantidad: 1, precio_unitario: 2000, subtotal: 2000 },
-            { id_producto: 3, nombre: 'Mango Verde', cantidad: 1, precio_unitario: 1500, subtotal: 1500 }
-          ]
-        },
-        {
-          id_venta: 2,
-          total: 5000,
-          fecha: new Date('2024-01-14').toISOString(),
-          productos: [
-            { id_producto: 1, nombre: 'Mango Tommy', cantidad: 2, precio_unitario: 2500, subtotal: 5000 }
-          ]
-        },
-        {
-          id_venta: 3,
-          total: 3500,
-          fecha: new Date('2024-01-13').toISOString(),
-          productos: [
-            { id_producto: 2, nombre: 'Mango Azúcar', cantidad: 1, precio_unitario: 2000, subtotal: 2000 },
-            { id_producto: 3, nombre: 'Mango Verde', cantidad: 1, precio_unitario: 1500, subtotal: 1500 }
-          ]
+    const fetchVentas = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/ventas');
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al obtener las ventas');
         }
-      ];
-      setVentas(ventasSimuladas);
-    }
-  }, [ventas.length, setVentas]);
+        
+        const ventasData = await response.json();
+        
+        // Mapear los datos de la API al formato esperado por el componente
+        const ventasFormateadas = ventasData.map(venta => ({
+          id_venta: venta.id_venta,
+          total: parseFloat(venta.total),
+          fecha: new Date(venta.fecha).toISOString(),
+          // Asegurarse de que los detalles de la venta tengan el formato correcto
+          productos: venta.detalles_venta?.map(detalle => ({
+            id_producto: detalle.id_producto,
+            nombre: detalle.nombre_producto || `Producto ${detalle.id_producto}`,
+            cantidad: detalle.cantidad,
+            precio_unitario: parseFloat(detalle.precio_unitario),
+            subtotal: parseFloat(detalle.cantidad * detalle.precio_unitario)
+          })) || []
+        }));
+        
+        setVentas(ventasFormateadas);
+      } catch (error) {
+        console.error('Error al cargar las ventas:', error);
+        // Mostrar un mensaje de error al usuario
+        // Aquí podrías usar un toast o un componente de error
+      }
+    };
+
+    fetchVentas();
+  }, [setVentas]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {

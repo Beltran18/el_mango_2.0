@@ -107,15 +107,49 @@ const UsuarioModal = ({ isOpen, onClose, usuario }) => {
       }
 
       if (isEditing) {
-        // Actualizar usuario existente
-        updateUsuario(usuario.documento, usuarioData);
+        // Actualizar usuario existente en el backend
+        const response = await fetch(
+          `http://localhost:3000/api/usuarios/${usuario.documento}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(usuarioData)
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Error al actualizar el usuario');
+        }
+
+        // Actualizar el estado local
+        const updatedUser = await response.json();
+        updateUsuario(usuario.documento, updatedUser);
+        
         toast({
           title: "Usuario actualizado",
           description: `${usuarioData.email} ha sido actualizado correctamente.`
         });
       } else {
         // Crear nuevo usuario
-        addUsuario(usuarioData);
+        const response = await fetch('http://localhost:3000/api/usuarios', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(usuarioData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Error al crear el usuario');
+        }
+
+        const newUser = await response.json();
+        addUsuario(newUser);
+        
         toast({
           title: "Usuario creado",
           description: `${usuarioData.email} ha sido agregado al sistema.`
@@ -124,9 +158,10 @@ const UsuarioModal = ({ isOpen, onClose, usuario }) => {
 
       onClose();
     } catch (error) {
+      console.error('Error al guardar el usuario:', error);
       toast({
         title: "Error",
-        description: `No se pudo ${isEditing ? 'actualizar' : 'crear'} el usuario.`,
+        description: error.message || `No se pudo ${isEditing ? 'actualizar' : 'crear'} el usuario.`,
         variant: "destructive"
       });
     } finally {

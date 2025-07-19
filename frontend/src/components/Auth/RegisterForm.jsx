@@ -29,6 +29,42 @@ const RegisterForm = ({ onToggleForm }) => {
     setSuccess('');
   };
 
+  // Función para verificar si un usuario ya existe
+  const verificarUsuarioExistente = async (documento, email) => {
+    try {
+      // Verificar por documento
+      const response = await fetch(`http://localhost:3000/api/usuarios/${documento}`);
+      
+      if (response.ok) {
+        const usuario = await response.json();
+        return {
+          existe: true,
+          mensaje: 'Ya existe un usuario con este documento',
+          campo: 'documento'
+        };
+      }
+      
+      // Verificar por email
+      const responseEmail = await fetch('http://localhost:3000/api/usuarios');
+      if (responseEmail.ok) {
+        const usuarios = await responseEmail.json();
+        const usuarioConEmail = usuarios.find(u => u.email === email);
+        if (usuarioConEmail) {
+          return {
+            existe: true,
+            mensaje: 'Ya existe un usuario con este correo electrónico',
+            campo: 'email'
+          };
+        }
+      }
+      
+      return { existe: false };
+    } catch (error) {
+      console.error('Error al verificar usuario existente:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -52,16 +88,100 @@ const RegisterForm = ({ onToggleForm }) => {
         return;
       }
 
-      // Simulación de registro - aquí irá la llamada al backend
+      // Validación de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError('Por favor ingresa un correo electrónico válido');
+        return;
+      }
+
+      // Validación de documento (solo números)
+      if (!/^\d+$/.test(formData.documento)) {
+        setError('El documento solo debe contener números');
+        return;
+      }
+
+      // Verificar si el usuario ya existe
+      const verificacion = await verificarUsuarioExistente(formData.documento, formData.email);
+      if (verificacion.existe) {
+        setError(verificacion.mensaje);
+        return;
+      }
+
+      // Llamada a la API de registro
+      const apiUrl = 'http://localhost:3000/api/usuarios';
+      console.log('Enviando solicitud a:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documento: formData.documento,
+          email: formData.email,
+          contraseña: formData.contraseña
+        })
+      });
+
+      // Verificar el tipo de contenido de la respuesta
+      const contentType = response.headers.get('content-type') || '';
+      let data;
+      
+      // Obtener la respuesta como texto primero para depuración
+      const textResponse = await response.text();
+      console.log('Respuesta del servidor (raw):', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: textResponse.substring(0, 500) // Mostrar solo los primeros 500 caracteres
+      });
+      
+      try {
+        // Intentar analizar como JSON si el contenido parece ser JSON
+        if (contentType.includes('application/json') || (textResponse.trim().startsWith('{') || textResponse.trim().startsWith('['))) {
+          data = JSON.parse(textResponse);
+        } else {
+          throw new Error('La respuesta no es un JSON válido');
+        }
+      } catch (parseError) {
+        console.error('Error al analizar la respuesta JSON:', parseError);
+        console.error('Contenido de la respuesta:', textResponse);
+        throw new Error(`Error en la respuesta del servidor (${response.status} ${response.statusText}). La respuesta no es un JSON válido.`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || data.mensaje || `Error al registrar el usuario (${response.status} ${response.statusText})`);
+      }
+
+      // Éxito en el registro
       setSuccess('¡Registro exitoso! Ahora puedes iniciar sesión.');
       
       // Limpiar formulario
+      setFormData({
+        documento: '',
+        email: '',
+        contraseña: '',
+        confirmarContraseña: ''
+      });
+      
+      // Redirigir al login después de 2 segundos
       setTimeout(() => {
         onToggleForm();
       }, 2000);
 
     } catch (err) {
-      setError('Error al registrar usuario. Inténtalo de nuevo.');
+      console.error('Error en el registro:', {
+        message: err.message,
+        stack: err.stack,
+        formData: {
+          ...formData,
+          contraseña: '***', // No registrar la contraseña real
+          confirmarContraseña: '***'
+        }
+      });
+      setError(err.message || 'Error al registrar usuario. Inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
     }

@@ -90,23 +90,60 @@ const ProveedorModal = ({ isOpen, onClose, proveedor }) => {
     try {
       const proveedorData = {
         nombre_proveedor: formData.nombre_proveedor.trim(),
-        id_producto: parseInt(formData.id_producto)
+        id_producto: formData.id_producto ? parseInt(formData.id_producto) : null
       };
 
+      let response;
       if (isEditing) {
         // Actualizar proveedor existente
-        updateProveedor(proveedor.id_proveedor, proveedorData);
+        response = await fetch(`http://localhost:3000/api/proveedores/${proveedor.id_proveedor}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(proveedorData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.mensaje || 'Error al actualizar el proveedor');
+        }
+
+        // Actualizar el store local
+        updateProveedor(proveedor.id_proveedor, {
+          ...proveedorData,
+          id_proveedor: proveedor.id_proveedor
+        });
+        
         toast({
           title: "Proveedor actualizado",
           description: `${proveedorData.nombre_proveedor} ha sido actualizado correctamente.`
         });
       } else {
         // Crear nuevo proveedor
+        response = await fetch('http://localhost:3000/api/proveedores', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(proveedorData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.mensaje || 'Error al crear el proveedor');
+        }
+
+        const responseData = await response.json();
+        
+        // Agregar el nuevo proveedor al store local
         const nuevoProveedor = {
           ...proveedorData,
-          id_proveedor: Date.now() // Simulamos un ID único
+          id_proveedor: responseData.id
         };
+        
         addProveedor(nuevoProveedor);
+        
         toast({
           title: "Proveedor creado",
           description: `${proveedorData.nombre_proveedor} ha sido agregado al sistema.`
@@ -115,9 +152,10 @@ const ProveedorModal = ({ isOpen, onClose, proveedor }) => {
 
       onClose();
     } catch (error) {
+      console.error('Error al procesar el proveedor:', error);
       toast({
         title: "Error",
-        description: `No se pudo ${isEditing ? 'actualizar' : 'crear'} el proveedor.`,
+        description: error.message || `No se pudo ${isEditing ? 'actualizar' : 'crear'} el proveedor.`,
         variant: "destructive"
       });
     } finally {

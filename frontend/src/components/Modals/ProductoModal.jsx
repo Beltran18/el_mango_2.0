@@ -94,11 +94,28 @@ const ProductoModal = ({ isOpen, onClose, producto }) => {
       };
 
       if (isEditing) {
-        // Actualizar producto existente
-        updateProducto(producto.id_producto, productoData);
+        // Actualizar producto existente en el backend
+        const response = await fetch(`http://localhost:3000/api/productos/${producto.id_producto}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(productoData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al actualizar el producto');
+        }
+
+        const productoActualizado = await response.json();
+        
+        // Actualizar el estado global con el producto actualizado
+        updateProducto(producto.id_producto, productoActualizado);
+        
         toast({
-          title: "Producto actualizado",
-          description: `${productoData.nombre} ha sido actualizado correctamente.`
+          title: "¡Producto actualizado!",
+          description: `${productoActualizado.nombre} ha sido actualizado correctamente.`
         });
       } else {
         // Crear nuevo producto en el backend

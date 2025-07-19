@@ -54,11 +54,39 @@ const CarritoModal = ({ isOpen, onClose }) => {
     try {
       const total = getCarritoTotal();
       
-      // Crear la venta
-      const nuevaVenta = {
-        id_venta: Date.now(),
-        total: total,
+      // Crear el objeto de venta para la API
+      const ventaData = {
         fecha: new Date().toISOString(),
+        total: total,
+        detalles: carrito.map(item => ({
+          id_producto: item.id_producto,
+          cantidad: item.cantidad,
+          precio_unitario: item.precio,
+          subtotal: item.precio * item.cantidad
+        }))
+      };
+
+      // Enviar la venta al backend
+      const response = await fetch('http://localhost:3000/api/ventas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ventaData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al procesar la venta');
+      }
+
+      const ventaProcesada = await response.json();
+      
+      // Crear la venta para el store local
+      const nuevaVenta = {
+        id_venta: ventaProcesada.id_venta,
+        fecha: ventaProcesada.fecha,
+        total: ventaProcesada.total,
         productos: carrito.map(item => ({
           id_producto: item.id_producto,
           nombre: item.nombre,
@@ -68,7 +96,7 @@ const CarritoModal = ({ isOpen, onClose }) => {
         }))
       };
 
-      // Agregar venta al store
+      // Agregar venta al store local
       addVenta(nuevaVenta);
 
       // Limpiar carrito
@@ -76,15 +104,16 @@ const CarritoModal = ({ isOpen, onClose }) => {
 
       toast({
         title: "¡Venta procesada!",
-        description: `Venta por ${formatPrice(total)} registrada correctamente.`
+        description: `Venta #${ventaProcesada.id_venta} por ${formatPrice(total)} registrada correctamente.`
       });
 
       onClose();
 
     } catch (error) {
+      console.error('Error al procesar la venta:', error);
       toast({
         title: "Error",
-        description: "No se pudo procesar la venta.",
+        description: error.message || "No se pudo procesar la venta. Intente nuevamente.",
         variant: "destructive"
       });
     } finally {

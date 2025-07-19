@@ -62,16 +62,27 @@ const ProductosView = () => {
     if (deleteDialog.producto) {
       try {
         setLoading(true);
-        // Aquí iría la llamada al backend
+        const response = await fetch(`http://localhost:3000/api/productos/${deleteDialog.producto.id_producto}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al eliminar el producto');
+        }
+
+        // Actualizar el estado global después de eliminar
         deleteProducto(deleteDialog.producto.id_producto);
+        
         toast({
-          title: "Producto eliminado",
+          title: "¡Producto eliminado!",
           description: `${deleteDialog.producto.nombre} ha sido eliminado correctamente.`
         });
       } catch (error) {
+        console.error('Error al eliminar el producto:', error);
         toast({
           title: "Error",
-          description: "No se pudo eliminar el producto.",
+          description: error.message || "No se pudo eliminar el producto. Intente nuevamente.",
           variant: "destructive"
         });
       } finally {
