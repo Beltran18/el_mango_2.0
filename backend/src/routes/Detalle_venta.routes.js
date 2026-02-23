@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Obtener detalle de una venta específica
+// Obtener detalle de una venta específica solo muestra una 
 router.get("/:id_venta", async (req, res) => {
   const { id_venta } = req.params;
   try {
