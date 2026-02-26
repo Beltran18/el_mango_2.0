@@ -26,75 +26,39 @@ const LoginForm = ({ onToggleForm }) => {
     setError('');
   };
 
-  const verificarCredenciales = async (email, contraseña) => {
-    try {
-      // Primero obtenemos todos los usuarios
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/usuarios`);
-      
-      if (!response.ok) {
-        throw new Error('Error al verificar las credenciales');
-      }
-      
-      const usuarios = await response.json();
-      
-      // Buscamos un usuario que coincida con el email
-      const usuario = usuarios.find(u => u.email === email);
-      
-      if (!usuario) {
-        return { valido: false, mensaje: 'Usuario no encontrado' };
-      }
-      
-      // Verificamos la contraseña
-      // NOTA: En una aplicación real, esto debería hacerse del lado del servidor
-      // con un sistema de hash como bcrypt
-      if (usuario.contraseña !== contraseña) {
-        return { valido: false, mensaje: 'Contraseña incorrecta' };
-      }
-      
-      return { 
-        valido: true, 
-        usuario: {
-          documento: usuario.documento,
-          email: usuario.email,
-          // Agrega aquí otros campos del usuario que necesites
-        }
-      };
-      
-    } catch (error) {
-      console.error('Error en verificación de credenciales:', error);
-      return { 
-        valido: false, 
-        mensaje: 'Error al verificar las credenciales. Inténtalo de nuevo.' 
-      };
-    }
-  };
+  // la verificación ahora se hace en el backend mediante /api/usuarios/login
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
+    // Validar campos
+    if (!formData.email || !formData.contraseña) {
+      setError('Por favor, completa todos los campos');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Validar que los campos no estén vacíos
-      if (!formData.email || !formData.contraseña) {
-        setError('Por favor, completa todos los campos');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/usuarios/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, contraseña: formData.contraseña })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Credenciales inválidas');
         return;
       }
 
-      // Verificar credenciales con el backend
-      const resultado = await verificarCredenciales(formData.email, formData.contraseña);
-      
-      if (!resultado.valido) {
-        setError(resultado.mensaje || 'Credenciales inválidas');
-        return;
-      }
-      
-      // Si llegamos aquí, las credenciales son válidas
-      login(resultado.usuario);
-      
+      // login exitoso
+      login(data);
     } catch (err) {
       console.error('Error en el inicio de sesión:', err);
-      setError(err.message || 'Error al iniciar sesión. Inténtalo de nuevo.');
+      setError('Error al iniciar sesión. Inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
     }
