@@ -1,13 +1,13 @@
 import { Router } from "express";
-import { pool } from "../config/db.js";
+import pool from "../config/db.js";
 
 const router = Router();
 
 // Obtener todos los usuarios
 router.get("/", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM usuarios");
-    res.json(rows);
+    const result = await pool.query("SELECT * FROM usuarios");
+    res.json(result.rows);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener los usuarios" });
   }
@@ -17,13 +17,13 @@ router.get("/", async (req, res) => {
 router.get("/:documento", async (req, res) => {
   const { documento } = req.params;
   try {
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE documento = ?", [documento]);
+    const result = await pool.query("SELECT * FROM usuarios WHERE documento = $1", [documento]);
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    res.json(rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener el usuario" });
   }
@@ -39,7 +39,7 @@ router.post("/", async (req, res) => {
 
   try {
     await pool.query(
-      "INSERT INTO usuarios (documento, email, contraseña) VALUES (?, ?, ?)",
+      "INSERT INTO usuarios (documento, email, contraseña) VALUES ($1, $2, $3)",
       [documento, email, contraseña]
     );
     res.status(201).json({ message: "Usuario creado correctamente" });
@@ -54,12 +54,12 @@ router.put("/:documento", async (req, res) => {
   const { documento } = req.params;
 
   try {
-    const [result] = await pool.query(
-      "UPDATE usuarios SET email = ?, contraseña = ? WHERE documento = ?",
+    const result = await pool.query(
+      "UPDATE usuarios SET email = $1, contraseña = $2 WHERE documento = $3",
       [email, contraseña, documento]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
@@ -73,9 +73,9 @@ router.put("/:documento", async (req, res) => {
 router.delete("/:documento", async (req, res) => {
   const { documento } = req.params;
   try {
-    const [result] = await pool.query("DELETE FROM usuarios WHERE documento = ?", [documento]);
+    const result = await pool.query("DELETE FROM usuarios WHERE documento = $1", [documento]);
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 

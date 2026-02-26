@@ -1,12 +1,26 @@
-// src/config/db.js
-import mysql2 from 'mysql2/promise';
-import dotenv from 'dotenv';
+import pkg from "pg";
+const { Pool } = pkg;
 
-dotenv.config();
+const isProduction = process.env.NODE_ENV === "production";
 
-export const pool = mysql2.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'elmango2_0',
+if (!process.env.DATABASE_URL) {
+  console.error("❌ ERROR: DATABASE_URL no está definida en las variables de entorno");
+  process.exit(1);
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: isProduction
+    ? { rejectUnauthorized: false }
+    : false
 });
+
+pool.on('error', (err) => {
+  console.error('❌ Error inesperado en el pool de PostgreSQL:', err);
+});
+
+pool.on('connect', () => {
+  console.log('✅ Conexión exitosa a PostgreSQL');
+});
+
+export default pool;

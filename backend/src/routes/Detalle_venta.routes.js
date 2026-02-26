@@ -1,14 +1,14 @@
 // src/routes/detalle_venta.routes.js
 import { Router } from "express";
-import { pool } from "../config/db.js";
+import pool from "../config/db.js";
 
 const router = Router();
 
 // Obtener todos los detalles de venta
 router.get("/", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM detalle_venta");
-    res.json(rows);
+    const result = await pool.query("SELECT * FROM detalle_venta");
+    res.json(result.rows);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener los detalles de venta" });
   }
@@ -18,14 +18,14 @@ router.get("/", async (req, res) => {
 router.get("/:id_venta", async (req, res) => {
   const { id_venta } = req.params;
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM detalle_venta WHERE id_venta = ?",
+    const result = await pool.query(
+      "SELECT * FROM detalle_venta WHERE id_venta = $1",
       [id_venta]
     );
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "No hay detalles para esta venta" });
     }
-    res.json(rows);
+    res.json(result.rows);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener el detalle de venta" });
   }
@@ -41,7 +41,7 @@ router.post("/", async (req, res) => {
 
   try {
     await pool.query(
-      "INSERT INTO detalle_venta (id_venta, id_producto, cantidad) VALUES (?, ?, ?)",
+      "INSERT INTO detalle_venta (id_venta, id_producto, cantidad) VALUES ($1, $2, $3)",
       [id_venta, id_producto, cantidad]
     );
     res.status(201).json({ message: "Detalle de venta registrado correctamente" });
@@ -60,12 +60,12 @@ router.put("/:id_venta/:id_producto", async (req, res) => {
   }
 
   try {
-    const [result] = await pool.query(
-      "UPDATE detalle_venta SET cantidad = ? WHERE id_venta = ? AND id_producto = ?",
+    const result = await pool.query(
+      "UPDATE detalle_venta SET cantidad = $1 WHERE id_venta = $2 AND id_producto = $3",
       [cantidad, id_venta, id_producto]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: "Detalle no encontrado" });
     }
 
@@ -80,12 +80,12 @@ router.delete("/:id_venta/:id_producto", async (req, res) => {
   const { id_venta, id_producto } = req.params;
 
   try {
-    const [result] = await pool.query(
-      "DELETE FROM detalle_venta WHERE id_venta = ? AND id_producto = ?",
+    const result = await pool.query(
+      "DELETE FROM detalle_venta WHERE id_venta = $1 AND id_producto = $2",
       [id_venta, id_producto]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: "Detalle no encontrado" });
     }
 
