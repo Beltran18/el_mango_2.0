@@ -32,14 +32,14 @@ router.get("/:documento", async (req, res) => {
 
 // Crear un usuario (se almacena contrasena hasheada)
 router.post("/", async (req, res) => {
-  const { documento, email, contrasena } = req.body;
+  const { documento, email, contraseña } = req.body;
 
-  if (!documento || !email || !contrasena) {
+  if (!documento || !email || !contraseña) {
     return res.status(400).json({ error: "Todos los campos son requeridos" });
   }
 
   try {
-    const hashed = await bcrypt.hash(contrasena, 10);
+    const hashed = await bcrypt.hash(contraseña, 10);
     await pool.query(
       "INSERT INTO usuarios (documento, email, contrasena) VALUES ($1, $2, $3)",
       [documento, email, hashed]
@@ -52,14 +52,14 @@ router.post("/", async (req, res) => {
 
 // Actualizar un usuario existente (hashea nueva contrasena si se provee)
 router.put("/:documento", async (req, res) => {
-  const { email, contrasena } = req.body;
+  const { email, contraseña } = req.body;
   const { documento } = req.params;
 
   try {
     let updateQuery;
     let params;
-    if (contrasena) {
-      const hashed = await bcrypt.hash(contrasena, 10);
+    if (contraseña) {
+      const hashed = await bcrypt.hash(contraseña, 10);
       updateQuery = "UPDATE usuarios SET email = $1, contrasena = $2 WHERE documento = $3";
       params = [email, hashed, documento];
     } else {
@@ -98,9 +98,9 @@ router.delete("/:documento", async (req, res) => {
 
 // Ruta de login
 router.post("/login", async (req, res) => {
-  const { email, contrasena } = req.body;
-  if (!email || !contrasena) {
-    return res.status(400).json({ error: "Email y contrasena son requeridos" });
+  const { email, contraseña } = req.body;
+  if (!email || !contraseña) {
+    return res.status(400).json({ error: "Email y contraseña son requeridos" });
   }
 
   try {
@@ -109,7 +109,7 @@ router.post("/login", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
     const user = result.rows[0];
-    const match = await bcrypt.compare(contrasena, user.contrasena);
+    const match = await bcrypt.compare(contraseña, user.contrasena);
     if (!match) {
       return res.status(401).json({ error: "contrasena incorrecta" });
     }
