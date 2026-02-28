@@ -1,6 +1,6 @@
 import { Router } from "express";
 import pool from "../config/db.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const router = Router();
 
@@ -46,7 +46,7 @@ router.post("/", async (req, res) => {
     );
     res.status(201).json({ message: "Usuario creado correctamente" });
   } catch (error) {
-    res.status(500).json({ error: "Error al crear el usuario" });
+    res.status(500).json({ message: "Error al crear el usuario", error: error.message });
   }
 });
 
